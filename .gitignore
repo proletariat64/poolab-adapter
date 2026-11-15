@@ -1,0 +1,15 @@
+.code-review-graph/
+__pycache__/
+*.pyc
+.ruff_cache/
+.venv/
+.worktrees/
+.local/
+artifacts/
+dist/
+build/
+*.egg-info/
+experiments/results/
+.env
+.env.*
+!.env.example
