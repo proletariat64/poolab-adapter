@@ -261,7 +261,11 @@ class RemoteTransportTests(unittest.TestCase):
         deadline = time.monotonic() + 2
         while time.monotonic() < deadline:
             stat = Path("/proc") / str(pid) / "stat"
-            if not stat.exists() or stat.read_text().split()[2] == "Z":
+            try:
+                stopped = not stat.exists() or stat.read_text().split()[2] == "Z"
+            except (FileNotFoundError, ProcessLookupError):
+                stopped = True
+            if stopped:
                 return
             time.sleep(0.02)
         self.fail("owned remote-style child remained alive")
