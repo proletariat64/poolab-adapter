@@ -159,6 +159,26 @@ class AdapterExecutableTests(unittest.TestCase):
                 process.wait(timeout=3)
             process.stderr.close()
 
+    def test_shared_output_pipe_retains_its_original_blocking_flag(self):
+        for blocking in (True, False):
+            with self.subTest(blocking=blocking):
+                read_fd, write_fd = os.pipe()
+                with os.fdopen(read_fd, "rb") as reader, os.fdopen(write_fd, "wb", buffering=0) as writer:
+                    os.set_blocking(writer.fileno(), blocking)
+                    result = subprocess.run(
+                        [sys.executable, "-m", "poolab_adapter", "--", "printf out; printf err >&2"],
+                        cwd=ROOT, env=self.env, input=b"", stdout=writer, stderr=subprocess.STDOUT,
+                        check=False, timeout=8,
+                    )
+                    restored = os.get_blocking(writer.fileno())
+                    writer.close()
+                    output = reader.read()
+                self.assertEqual(result.returncode, 0, output)
+                self.assertEqual(restored, blocking, "adapter changed a shared output description")
+                self.assertEqual(len(output), 6)
+                self.assertIn(b"out", output)
+                self.assertIn(b"err", output)
+
     def test_packaged_adapter_runs_outside_the_checkout(self):
         artifact = Path(self.directory.name) / "binary directory" / "herdr-poolab"
         built = subprocess.run(

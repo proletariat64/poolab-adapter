@@ -67,13 +67,14 @@ class Relay:
         self.outgoing.extend(frame)
 
     def configure(self):
+        # dup()/2>&1 descriptors share flags: snapshot both before changing either.
+        self.original_blocking = {fd: os.get_blocking(fd) for fd in (1, 2) if not os.isatty(fd)}
         for stream, fd in ((b"O", 1), (b"E", 2)):
             if os.isatty(fd):
                 target = os.open(os.ttyname(fd), os.O_WRONLY | os.O_NONBLOCK | os.O_NOCTTY)
                 self.owned_fds.append(target)
             else:
                 target = fd
-                self.original_blocking[fd] = os.get_blocking(fd)
                 os.set_blocking(fd, False)
             self.sinks[stream] = target
         for number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
